@@ -10,10 +10,10 @@ import (
 var ErrUserExists = errors.New("user already exists")
 
 type UserService struct {
-	userRepository *repository.UserRepository
+	userRepository repository.UserRepo
 }
 
-func NewUserService(userRepository *repository.UserRepository) *UserService {
+func NewUserService(userRepository repository.UserRepo) *UserService {
 	return &UserService{
 		userRepository: userRepository,
 	}

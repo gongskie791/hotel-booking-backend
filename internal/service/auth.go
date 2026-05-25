@@ -12,10 +12,10 @@ var ErrInvalidToken = errors.New("invalid token")
 var ErrUnauthorized = errors.New("unauthorized")
 
 type AuthService struct {
-	userRepository *repository.UserRepository
+	userRepository repository.UserRepo
 }
 
-func NewAuthService(userRepository *repository.UserRepository) *AuthService {
+func NewAuthService(userRepository repository.UserRepo) *AuthService {
 	return &AuthService{
 		userRepository: userRepository,
 	}
