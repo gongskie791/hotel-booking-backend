@@ -71,9 +71,16 @@ jobs:
             docker pull ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest
             docker stop hotel-booking-backend || true
             docker rm hotel-booking-backend || true
+
+            SECRET=$(aws secretsmanager get-secret-value \
+              --secret-id "hotel-booking/db-credentials" \
+              --region ${{ secrets.AWS_REGION }} \
+              --query SecretString \
+              --output text)
+
             docker run -d --restart always --name hotel-booking-backend -p 80:8080 \
-            -e DB_HOST=${{ secrets.DB_HOST }} \
-            -e DB_USER=${{ secrets.DB_USER }} \
-            -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-            -e DB_NAME=${{ secrets.DB_NAME }} \
-            ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest
+              -e DB_HOST=$(echo $SECRET | jq -r '.DB_HOST') \
+              -e DB_USER=$(echo $SECRET | jq -r '.DB_USER') \
+              -e DB_PASSWORD=$(echo $SECRET | jq -r '.DB_PASSWORD') \
+              -e DB_NAME=$(echo $SECRET | jq -r '.DB_NAME') \
+              ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest
