@@ -78,9 +78,15 @@ jobs:
               --query SecretString \
               --output text)
 
+            DB_HOST=$(echo $SECRET | jq -r '.DB_HOST')
+            DB_USER=$(echo $SECRET | jq -r '.DB_USER')
+            DB_PASSWORD=$(echo $SECRET | jq -r '.DB_PASSWORD')
+            DB_NAME=$(echo $SECRET | jq -r '.DB_NAME')
+            IMAGE="${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest"
+
             docker run -d --restart always --name hotel-booking-backend -p 80:8080 \
-              -e DB_HOST=$(echo $SECRET | jq -r '.DB_HOST') \
-              -e DB_USER=$(echo $SECRET | jq -r '.DB_USER') \
-              -e DB_PASSWORD=$(echo $SECRET | jq -r '.DB_PASSWORD') \
-              -e DB_NAME=$(echo $SECRET | jq -r '.DB_NAME') \
-              ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest
+              -e DB_HOST="$DB_HOST" \
+              -e DB_USER="$DB_USER" \
+              -e DB_PASSWORD="$DB_PASSWORD" \
+              -e DB_NAME="$DB_NAME" \
+              "$IMAGE"
