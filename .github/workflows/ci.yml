@@ -49,7 +49,6 @@ jobs:
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-        # build backend file and push to ECR
       - name: Build and push image to ECR
         run: |
           docker build -t ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest .
@@ -85,8 +84,24 @@ jobs:
             IMAGE="${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest"
 
             docker run -d --restart always --name hotel-booking-backend -p 80:8080 \
+              --log-driver awslogs \
+              --log-opt awslogs-region=${{ secrets.AWS_REGION }} \
+              --log-opt awslogs-group=/hotel-booking/backend \
+              --log-opt awslogs-stream=ec2 \
               -e DB_HOST="$DB_HOST" \
               -e DB_USER="$DB_USER" \
               -e DB_PASSWORD="$DB_PASSWORD" \
               -e DB_NAME="$DB_NAME" \
               "$IMAGE"
+
+
+            sleep 5
+
+            STATUS=$(docker inspect -f '{{.State.Status}}' hotel-booking-backend)
+            if [ "$STATUS" != "running" ]; then
+              echo "Container failed to start. Status: $STATUS"
+              docker logs hotel-booking-backend
+              exit 1
+            fi
+
+            echo "Deployment successful. Container is running."
