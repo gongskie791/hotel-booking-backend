@@ -6,6 +6,7 @@ import (
 	"booking-system/lvl1/internal/middleware"
 	"booking-system/lvl1/internal/repository"
 	"booking-system/lvl1/internal/service"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,12 +15,24 @@ func NewRouter(router *gin.Engine, db *config.DB) {
 	router.Use(middleware.CORS())
 	api := router.Group("/api")
 	{
+		api.GET("/health", healthCheck(db))
 		AuthRoutes(api, db)
 		UserRoutes(api, db)
 		HotelRoutes(api, db)
 		// BookingRoutes(api, db)
 	}
 
+}
+
+func healthCheck(db *config.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		sqlDB, err := db.DB.DB()
+		if err != nil || sqlDB.Ping() != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unhealthy", "database": "unreachable"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "healthy", "database": "reachable"})
+	}
 }
 
 func AuthRoutes(router *gin.RouterGroup, db *config.DB) {

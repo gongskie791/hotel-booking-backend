@@ -95,13 +95,20 @@ jobs:
               "$IMAGE"
 
 
-            sleep 5
+            echo "Waiting for service to be healthy..."
+            for i in $(seq 1 12); do
+              HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/api/health)
+              if [ "$HTTP_STATUS" = "200" ]; then
+                echo "Health check passed (attempt $i)."
+                break
+              fi
+              echo "Attempt $i: got HTTP $HTTP_STATUS, retrying in 5s..."
+              sleep 5
+              if [ "$i" = "12" ]; then
+                echo "Health check failed after 60s."
+                docker logs hotel-booking-backend
+                exit 1
+              fi
+            done
 
-            STATUS=$(docker inspect -f '{{.State.Status}}' hotel-booking-backend)
-            if [ "$STATUS" != "running" ]; then
-              echo "Container failed to start. Status: $STATUS"
-              docker logs hotel-booking-backend
-              exit 1
-            fi
-
-            echo "Deployment successful. Container is running."
+            echo "Deployment successful. Service is healthy."
