@@ -83,7 +83,7 @@ jobs:
             DB_NAME=$(echo $SECRET | jq -r '.DB_NAME')
             IMAGE="${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest"
 
-            docker run -d --restart always --name hotel-booking-backend -p 80:8080 \
+            docker run -d --restart always --name hotel-booking-backend -p 8080:8080 \
               --log-driver awslogs \
               --log-opt awslogs-region=${{ secrets.AWS_REGION }} \
               --log-opt awslogs-group=/hotel-booking/backend \
