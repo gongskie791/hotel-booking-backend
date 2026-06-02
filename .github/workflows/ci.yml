@@ -109,7 +109,7 @@ jobs:
             "$IMAGE"
 
           for i in $(seq 1 12); do
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/health)
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/health || echo "000")
             if [ "$HTTP_STATUS" = "200" ]; then
               echo "Health check passed (attempt $i)."
               exit 0
