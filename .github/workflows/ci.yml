@@ -81,8 +81,7 @@ jobs:
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
-            --parameters "commands=[\"echo $ENCODED | base64 -d | bash\"]" \
-            --environment-variables "AWS_REGION=${{ secrets.AWS_REGION }},ECR_REGISTRY=${{ secrets.ECR_REGISTRY }},ECR_REPOSITORY=${{ secrets.ECR_REPOSITORY }}" \
+            --parameters "commands=[\"export AWS_REGION='${{ secrets.AWS_REGION }}' ECR_REGISTRY='${{ secrets.ECR_REGISTRY }}' ECR_REPOSITORY='${{ secrets.ECR_REPOSITORY }}'; echo $ENCODED | base64 -d | bash\"]" \
             --query "Command.CommandId" \
             --output text)
 
