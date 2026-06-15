@@ -73,66 +73,13 @@ jobs:
             --query "Reservations[0].Instances[0].InstanceId" \
             --output text)
 
-          cat > deploy.sh << 'EOF'
-          #!/bin/bash
-          set -e
-          ECR_REGISTRY="__ECR_REGISTRY__"
-          ECR_REPOSITORY="__ECR_REPOSITORY__"
-          AWS_REGION="__AWS_REGION__"
-
-          aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
-          docker pull "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
-          docker stop hotel-booking-backend || true
-          docker rm hotel-booking-backend || true
-
-          SECRET=$(aws secretsmanager get-secret-value \
-            --secret-id "hotel-booking/db-credentials" \
-            --region "$AWS_REGION" \
-            --query SecretString \
-            --output text)
-
-          DB_HOST=$(echo "$SECRET" | jq -r '.DB_HOST')
-          DB_USER=$(echo "$SECRET" | jq -r '.DB_USER')
-          DB_PASSWORD=$(echo "$SECRET" | jq -r '.DB_PASSWORD')
-          DB_NAME=$(echo "$SECRET" | jq -r '.DB_NAME')
-          IMAGE="$ECR_REGISTRY/$ECR_REPOSITORY:latest"
-
-          docker run -d --restart always --name hotel-booking-backend -p 8080:8080 \
-            --log-driver awslogs \
-            --log-opt awslogs-region="$AWS_REGION" \
-            --log-opt awslogs-group=/hotel-booking/backend \
-            --log-opt awslogs-stream=ec2 \
-            -e DB_HOST="$DB_HOST" \
-            -e DB_USER="$DB_USER" \
-            -e DB_PASSWORD="$DB_PASSWORD" \
-            -e DB_NAME="$DB_NAME" \
-            "$IMAGE"
-
-          for i in $(seq 1 12); do
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/health || echo "000")
-            if [ "$HTTP_STATUS" = "200" ]; then
-              echo "Health check passed (attempt $i)."
-              exit 0
-            fi
-            echo "Attempt $i: got HTTP $HTTP_STATUS, retrying in 5s..."
-            sleep 5
-          done
-
-          echo "Health check failed after 60s."
-          docker logs hotel-booking-backend
-          exit 1
-          EOF
-
-          sed -i "s|__ECR_REGISTRY__|${{ secrets.ECR_REGISTRY }}|g" deploy.sh
-          sed -i "s|__ECR_REPOSITORY__|${{ secrets.ECR_REPOSITORY }}|g" deploy.sh
-          sed -i "s|__AWS_REGION__|${{ secrets.AWS_REGION }}|g" deploy.sh
-
-          ENCODED=$(base64 -w 0 deploy.sh)
+          ENCODED=$(base64 -w 0 scripts/deploy.sh)
 
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
             --parameters "commands=[\"echo $ENCODED | base64 -d | bash\"]" \
+            --environment-variables "AWS_REGION=${{ secrets.AWS_REGION }},ECR_REGISTRY=${{ secrets.ECR_REGISTRY }},ECR_REPOSITORY=${{ secrets.ECR_REPOSITORY }}" \
             --query "Command.CommandId" \
             --output text)
 
@@ -144,12 +91,8 @@ jobs:
             --command-id "$COMMAND_ID" \
             --instance-id "$INSTANCE_ID")
 
-          echo "=== STDOUT ==="
-          echo "$RESULT" | jq -r '.StandardOutputContent'
-          echo "=== STDERR ==="
-          echo "$RESULT" | jq -r '.StandardErrorContent'
+          echo "=== STDOUT ===" && echo "$RESULT" | jq -r '.StandardOutputContent'
+          echo "=== STDERR ===" && echo "$RESULT" | jq -r '.StandardErrorContent'
 
           STATUS=$(echo "$RESULT" | jq -r '.Status')
-          if [ "$STATUS" != "Success" ]; then
-            exit 1
-          fi
+          [ "$STATUS" = "Success" ] || exit 1
