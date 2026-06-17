@@ -2,7 +2,8 @@
 set -e
 
 aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
-docker pull "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+TAG="${IMAGE_TAG:-latest}"
+docker pull "$ECR_REGISTRY/$ECR_REPOSITORY:$TAG"
 docker stop hotel-booking-backend || true
 docker rm hotel-booking-backend || true
 
@@ -26,7 +27,7 @@ docker run -d --restart always --name hotel-booking-backend -p 8080:8080 \
   -e DB_USER="$DB_USER" \
   -e DB_PASSWORD="$DB_PASSWORD" \
   -e DB_NAME="$DB_NAME" \
-  "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+  "$ECR_REGISTRY/$ECR_REPOSITORY:$TAG"
 
 for i in $(seq 1 12); do
   HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/health || echo "000")

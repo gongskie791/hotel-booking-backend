@@ -51,7 +51,10 @@ jobs:
 
       - name: Build and push image to ECR
         run: |
-          docker build -t ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest .
+          TAG=${{ github.sha }}
+          docker build -t ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:$TAG \
+                       -t ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest .
+          docker push ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:$TAG
           docker push ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest
 
   deploy-ec2:
@@ -81,7 +84,7 @@ jobs:
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
-            --parameters "commands=[\"export AWS_REGION='${{ secrets.AWS_REGION }}' ECR_REGISTRY='${{ secrets.ECR_REGISTRY }}' ECR_REPOSITORY='${{ secrets.ECR_REPOSITORY }}'; echo $ENCODED | base64 -d | bash\"]" \
+            --parameters "commands=[\"export AWS_REGION='${{ secrets.AWS_REGION }}' ECR_REGISTRY='${{ secrets.ECR_REGISTRY }}' ECR_REPOSITORY='${{ secrets.ECR_REPOSITORY }}' IMAGE_TAG='${{ github.sha }}'; echo $ENCODED | base64 -d | bash\"]" \
             --query "Command.CommandId" \
             --output text)
 
